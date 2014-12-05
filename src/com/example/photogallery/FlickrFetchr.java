@@ -60,7 +60,7 @@ public class FlickrFetchr {
 		return new String(getUrlBytes(urlSpec));
 	}
 	
-	public ArrayList<GalleryItem> fetchItems() {
+	public ArrayList<GalleryItem> fetchItems(Integer page) {
 		ArrayList<GalleryItem> items = new ArrayList<GalleryItem>();
 		try {
 			// Uri.Builder is a convenience class for creating properly escaped paramterized URLs
@@ -68,6 +68,7 @@ public class FlickrFetchr {
 					.appendQueryParameter("method", METHOD_GET_RECENT)
 					.appendQueryParameter("api_key", API_KEY)
 					.appendQueryParameter(PARAM_EXTRAS, EXTRA_SMALL_URL)
+					.appendQueryParameter("page", ""+page)
 					.build().toString();
 			System.out.println("url:\t" + url.toString());
 			String xmlString = getUrl(url.toString());
