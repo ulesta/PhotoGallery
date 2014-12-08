@@ -2,8 +2,6 @@ package com.example.photogallery;
 
 import java.util.ArrayList;
 
-import com.example.photogallery.ThumbnailDownloader.Listener;
-
 import model.GalleryItem;
 import android.graphics.Bitmap;
 import android.os.AsyncTask;
@@ -19,6 +17,8 @@ import android.widget.ArrayAdapter;
 import android.widget.FrameLayout;
 import android.widget.GridView;
 import android.widget.ImageView;
+
+import com.example.photogallery.ThumbnailDownloader.Listener;
 
 public class PhotoGalleryFragment extends Fragment {
 	private static final String TAG = "PhotoGalleryFragment";
@@ -159,6 +159,7 @@ public class PhotoGalleryFragment extends Fragment {
 	}
 	
 	private class GalleryItemAdapter extends ArrayAdapter<GalleryItem>{
+		
 		public GalleryItemAdapter(ArrayList<GalleryItem> items) {
 			super(getActivity(), 0, items);
 		}
@@ -174,6 +175,22 @@ public class PhotoGalleryFragment extends Fragment {
 			
 			GalleryItem item = getItem(position);
 			mThumbnailThread.queueThumbnail(imageView, item.getmUrl());
+			
+			/* Pre-loading into cache */
+			ArrayList<String> urls = new ArrayList<String>();
+			if (mGridView.getFirstVisiblePosition() == position) {
+				// take prev. 10 images
+				for (int i = position-1; i >= 0 && position - i <= 10; i--) {
+					urls.add(mItems.get(i).getmUrl());
+				}	
+				mThumbnailThread.preloadCache(urls);
+			} else if (mGridView.getLastVisiblePosition() == position); {
+				// take next 10 images
+				for (int i = position+1; i <= mItems.size() && i - position <= 10; i++) {
+					urls.add(mItems.get(i).getmUrl());
+				}
+				mThumbnailThread.preloadCache(urls);
+			}
 			
 			return convertView;
 		}

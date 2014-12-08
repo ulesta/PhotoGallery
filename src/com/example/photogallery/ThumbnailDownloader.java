@@ -1,6 +1,7 @@
 package com.example.photogallery;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -17,6 +18,7 @@ import android.util.LruCache;
 public class ThumbnailDownloader<Token> extends HandlerThread {
 	private static final String TAG = "ThumbnailDownloader";
 	private static final int MESSAGE_DOWNLOAD = 0;
+	private static final int MESSAGE_PRELOAD = 1;
 	
 	Handler mHandler;
 	Handler mResponseHandler;
@@ -30,7 +32,7 @@ public class ThumbnailDownloader<Token> extends HandlerThread {
     final int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
 
     // Use 1/8th of the available memory for this memory cache.
-    final int cacheSize = maxMemory / 6;
+    final int cacheSize = maxMemory / 4;
 
     private LruCache<String, Bitmap> mMemoryCache;
 	
@@ -65,6 +67,7 @@ public class ThumbnailDownloader<Token> extends HandlerThread {
 		
 		mHandler = new Handler() {
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public void handleMessage(Message msg) {
 				if(msg.what == MESSAGE_DOWNLOAD) {
@@ -73,9 +76,12 @@ public class ThumbnailDownloader<Token> extends HandlerThread {
 					Log.i(TAG, "Got a request for url: " + requestMap.get(token));
 					
 					handleRequest(token);
+				} else if (msg.what == MESSAGE_PRELOAD) {
+					Log.i("REACHED", "MESSAGE_PRELOAD");
+					handlePreload((ArrayList<String>)msg.obj);
 				}
 			}
-			
+
 		};
 	}
 
@@ -106,8 +112,9 @@ public class ThumbnailDownloader<Token> extends HandlerThread {
 				bitmap = BitmapFactory.decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
 				
 				addBitmapToMemoryCache(url, bitmap);
-				Log.i(TAG, "Bitmap created");
+				Log.i(TAG, "Created new bitmap");
 			} else {
+				Log.i("Cache", "Retrieved item from cache: " + url);
 				bitmap = cached;
 			}
 			
@@ -143,8 +150,31 @@ public class ThumbnailDownloader<Token> extends HandlerThread {
 	}
 	
 	public Bitmap getBitmapFromMemCache(String url) {
-		Log.i("Cache", "Retrieved item from cache: " + url);
 	    return mMemoryCache.get(url);
 	}
+
+	public void preloadCache(ArrayList<String> urls) {
+		
+		mHandler.obtainMessage(MESSAGE_PRELOAD, urls).sendToTarget();
+	}
+	
+	private void handlePreload(ArrayList<String> urls) {
+		Log.i("REACHED", "handlePreload");
+		for (int i = 0; i < urls.size(); i++ ) {
+			final Bitmap cached = getBitmapFromMemCache(urls.get(i));
+			if (cached == null) {
+				try {
+					final byte[] bitmapBytes = new FlickrFetchr().getUrlBytes(urls.get(i));
+					final Bitmap bitmap = BitmapFactory.decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
+					
+					addBitmapToMemoryCache(urls.get(i), bitmap);
+					Log.i("PRELOAD", "preloaded img to cache");
+				} catch (IOException e) {
+					Log.i(TAG, "Error loading file!", e);
+				}
+			}			
+		}
+	}
+	
 	
 }
