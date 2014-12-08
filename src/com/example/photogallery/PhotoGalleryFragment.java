@@ -2,9 +2,13 @@ package com.example.photogallery;
 
 import java.util.ArrayList;
 
+import com.example.photogallery.ThumbnailDownloader.Listener;
+
 import model.GalleryItem;
+import android.graphics.Bitmap;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.util.Log;
@@ -14,6 +18,7 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.FrameLayout;
 import android.widget.GridView;
+import android.widget.ImageView;
 
 public class PhotoGalleryFragment extends Fragment {
 	private static final String TAG = "PhotoGalleryFragment";
@@ -22,6 +27,8 @@ public class PhotoGalleryFragment extends Fragment {
 	FrameLayout mLoading;
 	
 	ArrayList<GalleryItem> mItems;
+	
+	ThumbnailDownloader<ImageView> mThumbnailThread;
 	
 	ArrayAdapter<GalleryItem> adapter;
 	
@@ -35,6 +42,19 @@ public class PhotoGalleryFragment extends Fragment {
 		
 		mItems = new ArrayList<GalleryItem>();
 		adapter = new ArrayAdapter<GalleryItem>(getActivity(), android.R.layout.simple_gallery_item, mItems);
+	
+		mThumbnailThread = new ThumbnailDownloader<ImageView>(new Handler());
+		mThumbnailThread.setListener(new Listener<ImageView>() {
+			@Override
+			public void onThumbnailDownload(ImageView imageView, Bitmap thumbnail) {
+				if (isVisible()) {
+					imageView.setImageBitmap(thumbnail);
+				}
+			}
+		});
+		mThumbnailThread.start();
+		mThumbnailThread.getLooper();
+		Log.i(TAG, "Background thread started!");
 	}
 
 	@Override
@@ -53,6 +73,21 @@ public class PhotoGalleryFragment extends Fragment {
 		return v;
 	}
 	
+	
+	
+	@Override
+	public void onDestroy() {
+		super.onDestroy();
+		mThumbnailThread.quit();
+		Log.i(TAG, "Background thread destroyed!");
+	}
+
+	@Override
+	public void onDestroyView() {
+		super.onDestroyView();
+		mThumbnailThread.clearQueue();
+	}
+
 	/* Third param in generic is the type of result produced by AsyncTask, it sets the value
 	 * returned by AsyncTask. 
 	 * 
@@ -108,15 +143,36 @@ public class PhotoGalleryFragment extends Fragment {
 		if (mItems != null) {
 			adapter.notifyDataSetChanged();
 			Log.d("Size of mItems", ""+mItems.size());
-			// Limit to add 20 pages
-			if (pageCount <= 20) {
+			// Limit to add 2 pages
+			if (pageCount <= 2) {
 				new FetchItemsTask().execute(++pageCount);
 			}
-			mGridView.setAdapter(new ArrayAdapter<GalleryItem>(getActivity(), android.R.layout.simple_gallery_item, mItems));
+			mGridView.setAdapter(new GalleryItemAdapter(mItems));
 		} else {
 			mGridView.setAdapter(null);
 		}
 		
+	}
+	
+	private class GalleryItemAdapter extends ArrayAdapter<GalleryItem>{
+		public GalleryItemAdapter(ArrayList<GalleryItem> items) {
+			super(getActivity(), 0, items);
+		}
+		
+		@Override
+		public View getView(int position, View convertView, ViewGroup parent) {
+			if (convertView == null) {
+				convertView = getActivity().getLayoutInflater().inflate(R.layout.gallery_item, parent, false);
+			}
+			
+			ImageView imageView = (ImageView) convertView.findViewById(R.id.gallery_item_imageView);
+			imageView.setImageResource(R.drawable.hotair);
+			
+			GalleryItem item = getItem(position);
+			mThumbnailThread.queueThumbnail(imageView, item.getmUrl());
+			
+			return convertView;
+		}
 	}
 
 }
