@@ -12,6 +12,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.util.Log;
+import android.util.LruCache;
 
 public class ThumbnailDownloader<Token> extends HandlerThread {
 	private static final String TAG = "ThumbnailDownloader";
@@ -21,6 +22,18 @@ public class ThumbnailDownloader<Token> extends HandlerThread {
 	Handler mResponseHandler;
 	Listener<Token> mListener;
 	
+	Map<Token, String> requestMap = Collections.synchronizedMap(new HashMap<Token, String>());
+	
+	// Get max available VM memory (in kilobytes), exceeding this amount will throw an
+    // OutOfMemory exception. Stored in kilobytes as LruCache takes an
+    // int in its constructor.
+    final int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
+
+    // Use 1/8th of the available memory for this memory cache.
+    final int cacheSize = maxMemory / 6;
+
+    private LruCache<String, Bitmap> mMemoryCache;
+	
 	public interface Listener<Token> {
 		void onThumbnailDownload(Token token, Bitmap thumbnail);
 	}
@@ -28,18 +41,28 @@ public class ThumbnailDownloader<Token> extends HandlerThread {
 	public void setListener(Listener<Token> listener) {
 		mListener = listener;
 	}
-	
-	Map<Token, String> requestMap = Collections.synchronizedMap(new HashMap<Token, String>());
 
 	public ThumbnailDownloader(Handler handler) {
 		super(TAG);
 		mResponseHandler = handler;
 	}
 	
-	
+	/* This method is called before the looper does its first check, any intiliaztion should
+	 * be performed here (non-Javadoc)
+	 * @see android.os.HandlerThread#onLooperPrepared()
+	 */
 	@SuppressLint("HandlerLeak")
 	@Override
 	protected void onLooperPrepared() {
+		mMemoryCache = new LruCache<String, Bitmap>(cacheSize) {
+	        @Override
+	        protected int sizeOf(String key, Bitmap bitmap) {
+	            // The cache size will be measured in kilobytes rather than
+	            // number of items.
+	            return bitmap.getByteCount() / 1024;
+	        }
+	    };
+		
 		mHandler = new Handler() {
 
 			@Override
@@ -55,8 +78,6 @@ public class ThumbnailDownloader<Token> extends HandlerThread {
 			
 		};
 	}
-
-
 
 	public void queueThumbnail(Token token, String url) {
 		Log.i(TAG, "Got an URL: "  + url);
@@ -78,13 +99,21 @@ public class ThumbnailDownloader<Token> extends HandlerThread {
 			if (url == null) {
 				return;
 			}
-			byte[] bitmapBytes = new FlickrFetchr().getUrlBytes(url);
-			final Bitmap bitmap = BitmapFactory.decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
-			
-			Log.i(TAG, "Bitmap created");
-			
-			mResponseHandler.post(new Runnable() {
+			final Bitmap cached = getBitmapFromMemCache(url);
+			final Bitmap bitmap;
+			if (cached == null) {
+				byte[] bitmapBytes = new FlickrFetchr().getUrlBytes(url);
+				bitmap = BitmapFactory.decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
 				
+				addBitmapToMemoryCache(url, bitmap);
+				Log.i(TAG, "Bitmap created");
+			} else {
+				bitmap = cached;
+			}
+			
+			// posts task to main thread (UI)
+			mResponseHandler.post(new Runnable() {
+				// runs this in UI thread
 				@Override
 				public void run() {
 					// necessary because the GridView recycles its views
@@ -104,6 +133,18 @@ public class ThumbnailDownloader<Token> extends HandlerThread {
 	public void clearQueue() {
 		mHandler.removeMessages(MESSAGE_DOWNLOAD);
 		requestMap.clear();
+	}
+	
+	/* ------- Cache methods ------- */
+	public void addBitmapToMemoryCache(String key, Bitmap bitmap) {
+	    if (getBitmapFromMemCache(key) == null) {
+	        mMemoryCache.put(key, bitmap);
+	    }
+	}
+	
+	public Bitmap getBitmapFromMemCache(String url) {
+		Log.i("Cache", "Retrieved item from cache: " + url);
+	    return mMemoryCache.get(url);
 	}
 	
 }

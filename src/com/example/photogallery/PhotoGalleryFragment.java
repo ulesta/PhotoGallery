@@ -42,13 +42,17 @@ public class PhotoGalleryFragment extends Fragment {
 		
 		mItems = new ArrayList<GalleryItem>();
 		adapter = new ArrayAdapter<GalleryItem>(getActivity(), android.R.layout.simple_gallery_item, mItems);
-	
+		
 		mThumbnailThread = new ThumbnailDownloader<ImageView>(new Handler());
 		mThumbnailThread.setListener(new Listener<ImageView>() {
 			@Override
 			public void onThumbnailDownload(ImageView imageView, Bitmap thumbnail) {
+				/* this guard ensures we are not setting an image on a stale ImageView */
 				if (isVisible()) {
 					imageView.setImageBitmap(thumbnail);
+					
+					// Preload images after displaying [Ch27 - Challenge 2]
+					
 				}
 			}
 		});
