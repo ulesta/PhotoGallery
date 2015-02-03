@@ -3,10 +3,8 @@ package com.example.photogallery;
 import java.util.ArrayList;
 
 import model.GalleryItem;
-import android.graphics.Bitmap;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.Handler;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.util.Log;
@@ -18,7 +16,7 @@ import android.widget.FrameLayout;
 import android.widget.GridView;
 import android.widget.ImageView;
 
-import com.example.photogallery.ThumbnailDownloader.Listener;
+import com.squareup.picasso.Picasso;
 
 public class PhotoGalleryFragment extends Fragment {
 	private static final String TAG = "PhotoGalleryFragment";
@@ -43,11 +41,12 @@ public class PhotoGalleryFragment extends Fragment {
 		mItems = new ArrayList<GalleryItem>();
 		adapter = new ArrayAdapter<GalleryItem>(getActivity(), android.R.layout.simple_gallery_item, mItems);
 		
-		mThumbnailThread = new ThumbnailDownloader<ImageView>(new Handler());
+		// Not needed with Picasso implementation
+/*		mThumbnailThread = new ThumbnailDownloader<ImageView>(new Handler());
 		mThumbnailThread.setListener(new Listener<ImageView>() {
 			@Override
 			public void onThumbnailDownload(ImageView imageView, Bitmap thumbnail) {
-				/* this guard ensures we are not setting an image on a stale ImageView */
+				// this guard ensures we are not setting an image on a stale ImageView
 				if (isVisible()) {
 					imageView.setImageBitmap(thumbnail);
 					
@@ -56,8 +55,9 @@ public class PhotoGalleryFragment extends Fragment {
 				}
 			}
 		});
+		
 		mThumbnailThread.start();
-		mThumbnailThread.getLooper();
+		mThumbnailThread.getLooper();*/
 		Log.i(TAG, "Background thread started!");
 	}
 
@@ -82,14 +82,18 @@ public class PhotoGalleryFragment extends Fragment {
 	@Override
 	public void onDestroy() {
 		super.onDestroy();
-		mThumbnailThread.quit();
+		
+		// Without Picasso
+		//mThumbnailThread.quit();
 		Log.i(TAG, "Background thread destroyed!");
 	}
 
 	@Override
 	public void onDestroyView() {
 		super.onDestroyView();
-		mThumbnailThread.clearQueue();
+		
+		// Not needed with Picasso implementation
+		//mThumbnailThread.clearQueue();
 	}
 
 	/* Third param in generic is the type of result produced by AsyncTask, it sets the value
@@ -129,6 +133,10 @@ public class PhotoGalleryFragment extends Fragment {
 			mLoading.setVisibility(View.INVISIBLE);
 			mItems.addAll(items);
 			setupAdapter(adapter);
+			// limit to 2 pages
+			if (pageCount < 2) {
+				new FetchItemsTask().execute(++pageCount);
+			}
 		}
 		
 		
@@ -147,10 +155,6 @@ public class PhotoGalleryFragment extends Fragment {
 		if (mItems != null) {
 			adapter.notifyDataSetChanged();
 			Log.d("Size of mItems", ""+mItems.size());
-			// Limit to add 2 pages
-			if (pageCount <= 2) {
-				new FetchItemsTask().execute(++pageCount);
-			}
 			mGridView.setAdapter(new GalleryItemAdapter(mItems));
 		} else {
 			mGridView.setAdapter(null);
@@ -174,10 +178,16 @@ public class PhotoGalleryFragment extends Fragment {
 			imageView.setImageResource(R.drawable.hotair);
 			
 			GalleryItem item = getItem(position);
-			mThumbnailThread.queueThumbnail(imageView, item.getmUrl());
+			
+			// Without Picasso
+			//mThumbnailThread.queueThumbnail(imageView, item.getmUrl());
+			
+			// Picasso implementaion
+			// Source: http://www.bignerdranch.com/blog/solving-the-android-image-loading-problem-volley-vs-picasso/
+			Picasso.with(getContext()).load(item.getmUrl()).into(imageView);
 			
 			/* Pre-loading into cache */
-			ArrayList<String> urls = new ArrayList<String>();
+			/*ArrayList<String> urls = new ArrayList<String>();
 			if (mGridView.getFirstVisiblePosition() == position) {
 				// take prev. 10 images
 				for (int i = position-1; i >= 0 && position - i <= 10; i--) {
@@ -190,7 +200,7 @@ public class PhotoGalleryFragment extends Fragment {
 					urls.add(mItems.get(i).getmUrl());
 				}
 				mThumbnailThread.preloadCache(urls);
-			}
+			}*/
 			
 			return convertView;
 		}

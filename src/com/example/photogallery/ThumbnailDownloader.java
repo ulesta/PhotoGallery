@@ -39,7 +39,6 @@ public class ThumbnailDownloader<Token> extends HandlerThread {
 	public interface Listener<Token> {
 		void onThumbnailDownload(Token token, Bitmap thumbnail);
 	}
-	
 	public void setListener(Listener<Token> listener) {
 		mListener = listener;
 	}
@@ -107,6 +106,9 @@ public class ThumbnailDownloader<Token> extends HandlerThread {
 			}
 			final Bitmap cached = getBitmapFromMemCache(url);
 			final Bitmap bitmap;
+			
+			// For When Cache is enabled
+			/*
 			if (cached == null) {
 				byte[] bitmapBytes = new FlickrFetchr().getUrlBytes(url);
 				bitmap = BitmapFactory.decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
@@ -116,7 +118,15 @@ public class ThumbnailDownloader<Token> extends HandlerThread {
 			} else {
 				Log.i("Cache", "Retrieved item from cache: " + url);
 				bitmap = cached;
-			}
+			}*/
+			
+
+			// No Cache
+			byte[] bitmapBytes = new FlickrFetchr().getUrlBytes(url);
+			bitmap = BitmapFactory.decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
+			
+			addBitmapToMemoryCache(url, bitmap);
+			Log.i(TAG, "Created new bitmap");
 			
 			// posts task to main thread (UI)
 			mResponseHandler.post(new Runnable() {
