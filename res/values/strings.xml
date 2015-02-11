@@ -6,5 +6,6 @@
     <string name="action_settings">Settings</string>
     <string name="search">Search</string>
     <string name="clear_search">Clear</string>
+    <string name="search_hint">Enter search keyword</string>
 
 </resources>

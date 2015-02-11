@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- This XML is called a search configuration. In this case, the only config is that the search displays a hint string -->
+<searchable xmlns:android="http://schemas.android.com/apk/res/android" 
+    android:label="@string/app_name"
+    android:hint="@string/search_hint">
+</searchable>
