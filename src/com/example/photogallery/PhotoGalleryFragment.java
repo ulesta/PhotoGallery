@@ -117,12 +117,13 @@ public class PhotoGalleryFragment extends Fragment {
 		 */
 		@Override
 		protected ArrayList<GalleryItem> doInBackground(Integer... params) {
-			try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
+			String query = "android";	// for testing
+			
+			if (query != null) {
+				return new FlickrFetchr().search(query);
+			} else {
+				return new FlickrFetchr().fetchItems(1);
 			}
-			return new FlickrFetchr().fetchItems(params[0]);
 		}
 
 		/* Happens after doInBackground is complete, also executed on main thread hence safe
