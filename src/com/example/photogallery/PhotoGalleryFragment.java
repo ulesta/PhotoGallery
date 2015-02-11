@@ -9,6 +9,7 @@ import android.app.SearchManager;
 import android.app.SearchableInfo;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
@@ -27,6 +28,7 @@ import android.widget.FrameLayout;
 import android.widget.GridView;
 import android.widget.ImageView;
 import android.widget.SearchView;
+import android.widget.Toast;
 
 import com.squareup.picasso.Picasso;
 
@@ -80,6 +82,8 @@ public class PhotoGalleryFragment extends Fragment {
 	
 	public void updateItems() {
 		new FetchItemsTask().execute(1);
+		showQueryToast(PreferenceManager
+				.getDefaultSharedPreferences(getActivity()).getString(FlickrFetchr.PREF_SEARCH_QUERY, null));
 	}
 
 	@Override
@@ -100,7 +104,17 @@ public class PhotoGalleryFragment extends Fragment {
 			SearchableInfo searchInfo = searchManager.getSearchableInfo(name);
 			
 			searchView.setSearchableInfo(searchInfo);
+			
 		}
+		
+	}
+	
+	public void showQueryToast(String query) {
+		int duration = Toast.LENGTH_LONG;
+		String text = "Showing results for:\n";
+		
+		Toast toast = Toast.makeText(getActivity(), text + query, duration);
+		toast.show();
 	}
 
 	@Override
