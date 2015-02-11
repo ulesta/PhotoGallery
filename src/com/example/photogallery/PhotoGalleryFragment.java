@@ -3,10 +3,10 @@ package com.example.photogallery;
 import java.util.ArrayList;
 
 import model.GalleryItem;
-import android.graphics.Bitmap;
+import android.app.Activity;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.Handler;
+import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.util.Log;
@@ -21,7 +21,6 @@ import android.widget.FrameLayout;
 import android.widget.GridView;
 import android.widget.ImageView;
 
-import com.example.photogallery.ThumbnailDownloader.Listener;
 import com.squareup.picasso.Picasso;
 
 public class PhotoGalleryFragment extends Fragment {
@@ -52,7 +51,7 @@ public class PhotoGalleryFragment extends Fragment {
 		updateItems();
 		
 		// Not needed with Picasso implementation
-		mThumbnailThread = new ThumbnailDownloader<ImageView>(new Handler());
+		/*mThumbnailThread = new ThumbnailDownloader<ImageView>(new Handler());
 		mThumbnailThread.setListener(new Listener<ImageView>() {
 
 			@Override
@@ -69,7 +68,7 @@ public class PhotoGalleryFragment extends Fragment {
 		
 		mThumbnailThread.start();
 		mThumbnailThread.getLooper();
-		Log.i(TAG, "Background thread started!");
+		Log.i(TAG, "Background thread started!");*/
 	}
 	
 	public void updateItems() {
@@ -90,6 +89,11 @@ public class PhotoGalleryFragment extends Fragment {
 			getActivity().onSearchRequested();
 			return true;
 		case R.id.menu_item_clear:
+			PreferenceManager.getDefaultSharedPreferences(getActivity())
+			.edit()
+			.putString(FlickrFetchr.PREF_SEARCH_QUERY, null)
+			.commit();
+			updateItems();
 			return true;
 		default:
 			return super.onOptionsItemSelected(item);
@@ -118,7 +122,7 @@ public class PhotoGalleryFragment extends Fragment {
 		super.onDestroy();
 		
 		// Without Picasso
-		mThumbnailThread.quit();
+		// mThumbnailThread.quit();
 		Log.i(TAG, "Background thread destroyed!");
 	}
 
@@ -127,7 +131,7 @@ public class PhotoGalleryFragment extends Fragment {
 		super.onDestroyView();
 		
 		// Not needed with Picasso implementation
-		mThumbnailThread.clearQueue();
+		// mThumbnailThread.clearQueue();
 	}
 
 	/* Third param in generic is the type of result produced by AsyncTask, it sets the value
@@ -150,7 +154,14 @@ public class PhotoGalleryFragment extends Fragment {
 		 */
 		@Override
 		protected ArrayList<GalleryItem> doInBackground(Integer... params) {
-			String query = "android";	// for testing
+			Activity activity = getActivity();
+			if (activity == null) {
+				return new ArrayList<GalleryItem>();
+			}
+			
+			// get query stashed in SharedPreferences
+			String query = PreferenceManager.getDefaultSharedPreferences(activity)
+					.getString(FlickrFetchr.PREF_SEARCH_QUERY, null);
 			
 			if (query != null) {
 				return new FlickrFetchr().search(query);
@@ -165,12 +176,12 @@ public class PhotoGalleryFragment extends Fragment {
 		@Override
 		protected void onPostExecute(ArrayList<GalleryItem> items) {
 			mLoading.setVisibility(View.INVISIBLE);
-			mItems.addAll(items);
+			mItems = items;
 			setupAdapter(adapter);
 			// limit to 2 pages
-			if (pageCount < 2) {
+			/*if (pageCount < 2) {
 				new FetchItemsTask().execute(++pageCount);
-			}
+			}*/
 		}
 		
 		
@@ -214,11 +225,11 @@ public class PhotoGalleryFragment extends Fragment {
 			GalleryItem item = getItem(position);
 			
 			// Without Picasso
-			mThumbnailThread.queueThumbnail(imageView, item.getmUrl());
+			// mThumbnailThread.queueThumbnail(imageView, item.getmUrl());
 			
 			// Picasso implementaion
 			// Source: http://www.bignerdranch.com/blog/solving-the-android-image-loading-problem-volley-vs-picasso/
-			// Picasso.with(getContext()).load(item.getmUrl()).into(imageView);
+			Picasso.with(getContext()).load(item.getmUrl()).into(imageView);
 			
 			/* Pre-loading into cache */
 			/*ArrayList<String> urls = new ArrayList<String>();
