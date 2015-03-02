@@ -9,6 +9,7 @@ import android.app.SearchManager;
 import android.app.SearchableInfo;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -78,6 +79,9 @@ public class PhotoGalleryFragment extends Fragment {
 		mThumbnailThread.start();
 		mThumbnailThread.getLooper();
 		Log.i(TAG, "Background thread started!");*/
+		
+		Intent i = new Intent(getActivity(), PollService.class);
+		getActivity().startService(i);
 	}
 	
 	public void updateItems() {
